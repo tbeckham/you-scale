@@ -16,4 +16,8 @@ out
 build
 # gradle cache
 .gradle
+# idea project files (gradlew idea)
+you-scale.iml
+you-scale.ipr
+you-scale.iws
 

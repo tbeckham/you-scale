@@ -19,13 +19,17 @@ Basic scale test scripts to help evaluation of performance for X resources in Y 
 
 To run a test use (e.g.):
 
-  gradlew -Dtest.single=ScaleASLaunchConfigurationsAccounts test
+    gradlew -Dtest.single=ScaleASLaunchConfigurationsAccounts test
 
 Tests expect environment variables to be defined for credentials and endpoints, as provided by a eucarc file.
 
+To generated an IDEA project:
+
+    gradlew idea
+
 To build run:
 
-  gradlew testClasses
+    gradlew testClasses
 
 Running a full build will run all the tests, so don't do that ...
 
