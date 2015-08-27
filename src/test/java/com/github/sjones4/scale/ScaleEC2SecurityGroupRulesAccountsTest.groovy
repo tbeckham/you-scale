@@ -20,8 +20,13 @@ import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.handlers.AbstractRequestHandler
 import com.amazonaws.internal.StaticCredentialsProvider
+import com.amazonaws.services.ec2.AmazonEC2
+import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.ec2.model.AuthorizeSecurityGroupIngressRequest
+import com.amazonaws.services.ec2.model.CreateSecurityGroupRequest
+import com.amazonaws.services.ec2.model.DeleteSecurityGroupRequest
+import com.amazonaws.services.ec2.model.IpPermission
 import com.amazonaws.services.identitymanagement.model.CreateAccessKeyRequest
-import com.amazonaws.services.identitymanagement.model.CreateUserRequest
 import com.github.sjones4.youcan.youare.YouAreClient
 import com.github.sjones4.youcan.youare.model.CreateAccountRequest
 import com.github.sjones4.youcan.youare.model.DeleteAccountRequest
@@ -33,15 +38,15 @@ import java.util.concurrent.TimeUnit
 import static org.junit.Assert.assertNotNull
 
 /**
- * Scale test for IAM users in multiple accounts.
- *
- * https://eucalyptus.atlassian.net/browse/EUCA-11087
+ * Scale test for EC2 security groups rules in multiple accounts.
+ * 
+ * https://eucalyptus.atlassian.net/browse/EUCA-11098
  */
-class ScaleIAMUsersAccountsTest {
+class ScaleEC2SecurityGroupRulesAccountsTest {
 
   private final AWSCredentialsProvider eucalyptusCredentials
 
-  ScaleIAMUsersAccountsTest( ) {
+  ScaleEC2SecurityGroupRulesAccountsTest( ) {
     this.eucalyptusCredentials = new StaticCredentialsProvider( new BasicAWSCredentials(
         System.getenv('AWS_ACCESS_KEY'),
         System.getenv('AWS_SECRET_KEY')
@@ -64,6 +69,14 @@ class ScaleIAMUsersAccountsTest {
     euare
   }
 
+  private AmazonEC2 getEC2Client( final AWSCredentialsProvider credentials = eucalyptusCredentials ) {
+    final AmazonEC2 ec2 = new AmazonEC2Client( credentials, new ClientConfiguration(
+        socketTimeout: TimeUnit.MINUTES.toMillis( 2 )
+    ) )
+    ec2.setEndpoint( cloudUri( 'EC2_URL', '/services/compute' ) )
+    ec2
+  }
+
   private void print( String text ) {
     System.out.println( text )
   }
@@ -78,18 +91,19 @@ class ScaleIAMUsersAccountsTest {
     try {
       final int threads = 50
       final int accounts = 500
-      final int users = 5000
+      final int groups = 500
+      final int rules = 10
       final int iterations = accounts / threads
-      print( "Creating ${users} users in ${accounts} accounts using ${threads} threads" )
+      print( "Creating ${groups} security groups with ${rules} rules in ${accounts} accounts using ${threads} threads" )
       final CountDownLatch latch = new CountDownLatch( threads )
       ( 1..threads ).each { Integer thread ->
         final List<Runnable> cleanupTasks = [] as List<Runnable>
         allCleanupTasks << cleanupTasks
         Thread.start {
-          try{
-            ( 1..iterations ).each { Integer account ->
+          try {
+            (1..iterations).each { Integer account ->
               final String accountName = "${namePrefix}account-${thread}-${account}"
-              getYouAreClient( ).with {
+              getYouAreClient().with {
                 // Create account for testing
                 print("[${thread}] Creating account ${accountName}")
                 createAccount(new CreateAccountRequest(accountName: accountName))
@@ -112,16 +126,37 @@ class ScaleIAMUsersAccountsTest {
                   }
                 }
               }
-              assertNotNull("[${thread}] Expected account credentials", accountCredentials)
-
-              getYouAreClient( accountCredentials ).with {
-                print( "[${thread}] Creating ${users} users for account ${accountName}" )
-                (1..users).each { Integer user ->
-                  final String userName = "${namePrefix}user-${thread}-${user}"
-                  createUser(new CreateUserRequest(userName: userName))
-                  // let recursive account delete clean up the users
-                  if (user % 100 == 0) {
-                    println("[${thread}] Created ${user} users")
+              assertNotNull("[${thread}] Expected account credentials", accountCredentials)            
+              
+              getEC2Client( accountCredentials ).with {
+                (1..groups).each { Integer group ->
+                  final String securityGroupName = "${namePrefix}group-${thread}-${group}"
+                  createSecurityGroup( new CreateSecurityGroupRequest(
+                      description: 'test group',
+                      groupName: securityGroupName
+                  ) )
+                  cleanupTasks.add {
+                    deleteSecurityGroup( new DeleteSecurityGroupRequest(
+                        groupName: securityGroupName
+                    ))
+                  }
+                  (1..rules).each { Integer rule ->
+                    authorizeSecurityGroupIngress( new AuthorizeSecurityGroupIngressRequest(
+                        groupName: securityGroupName,
+                        ipPermissions: [
+                        new IpPermission(
+                            ipProtocol: 'tcp',
+                            fromPort: rule,
+                            toPort: rule,
+                            ipRanges: [
+                                '0.0.0.0/0'
+                            ]
+                        )
+                      ]
+                    ) )
+                  }
+                  if (group % 100 == 0) {
+                    println("[${thread}] Created ${group} security groups")
                   }
                 }
               }
