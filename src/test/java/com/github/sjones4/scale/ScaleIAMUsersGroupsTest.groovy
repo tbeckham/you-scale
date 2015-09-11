@@ -78,9 +78,10 @@ class ScaleIAMUsersGroupsTest {
       final int threads = 50
       final int accounts = 500
       final int users = 5000
-      final int groups = 10
+      final int groups = 500
+      final int groupsPerUser = 10
       final int iterations = accounts / threads
-      print( "Creating ${users} users in ${groups} groupss in ${accounts} accounts using ${threads} threads" )
+      print( "Creating ${users} users in ${groupsPerUser}/${groups} groups in ${accounts} accounts using ${threads} threads" )
       final CountDownLatch latch = new CountDownLatch( threads )
       ( 1..threads ).each { Integer thread ->
         final List<Runnable> cleanupTasks = [] as List<Runnable>
@@ -140,12 +141,13 @@ class ScaleIAMUsersGroupsTest {
                   createGroup( new CreateGroupRequest( groupName: "${namePrefix}group-${thread}-${group}" ))
                 }
 
-
-                print( "[${thread}] Creating ${users} users in ${groups} groups for account ${accountName}" )
+                print( "[${thread}] Creating ${users} users in ${groupsPerUser} groups for account ${accountName}" )
                 (1..users).each { Integer user ->
                   final String userName = "${namePrefix}user-${thread}-${user}"
+                  List<Integer> allGroups = (1..groups) as ArrayList<Integer>
+                  Collections.shuffle( allGroups )
                   createUser( new CreateUserRequest( userName: userName ) )
-                  (1..groups).each { Integer group ->
+                  allGroups.subList( 0, groupsPerUser ).each { Integer group ->
                     addUserToGroup( new AddUserToGroupRequest(
                         userName: userName,
                         groupName: "${namePrefix}group-${thread}-${group}" 
