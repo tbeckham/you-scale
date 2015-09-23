@@ -73,8 +73,8 @@ class ScaleEC2SecurityGroupRulesBasicTest {
     final long startTime = System.currentTimeMillis( )
     final List<List<Runnable>> allCleanupTasks = new ArrayList<>( )
     try {
-      final int target = 25000
-      final int rules = 10
+      final int target = 10000
+      final int rules = 100
       final int threads = 50
       final int iterations = target / threads
       print( "Creating ${target} security groups with ${rules} rules using ${threads} threads" )

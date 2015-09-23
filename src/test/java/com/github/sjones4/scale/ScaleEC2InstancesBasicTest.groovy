@@ -107,7 +107,7 @@ class ScaleEC2InstancesBasicTest {
     final long startTime = System.currentTimeMillis( )
     final List<List<Runnable>> allCleanupTasks = new ArrayList<>( )
     try {
-      final int target = 2000
+      final int target = 2500
       final int threads = 20
       final int iterations = target / threads
       print( "Creating ${target} instances using ${threads} threads" )
