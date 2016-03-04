@@ -40,8 +40,8 @@ class ScaleEC2SecurityGroupRulesBasicTest {
 
   ScaleEC2SecurityGroupRulesBasicTest( ) {
     this.eucalyptusCredentials = new StaticCredentialsProvider( new BasicAWSCredentials(
-        System.getenv('AWS_ACCESS_KEY'),
-        System.getenv('AWS_SECRET_KEY')
+        Objects.toString( System.getenv('AWS_ACCESS_KEY_ID'),     System.getenv('AWS_ACCESS_KEY') ),
+        Objects.toString( System.getenv('AWS_SECRET_ACCESS_KEY'), System.getenv('AWS_SECRET_KEY') )
     ) )
   }
 
